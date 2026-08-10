@@ -514,7 +514,7 @@ export function pingInvalidationListeners(
   }
 }
 
-export function readRouteCacheEntry(
+function readRouteCacheEntryFromCache(
   now: number,
   key: RouteCacheKey
 ): RouteCacheEntry | null {
@@ -524,7 +524,7 @@ export function readRouteCacheEntry(
     key.nextUrl
   )
   const isRevalidation = false
-  const existingEntry = getFromCacheMap(
+  return getFromCacheMap(
     now,
     getCurrentRouteCacheVersion(),
     routeCacheMap,
@@ -532,6 +532,13 @@ export function readRouteCacheEntry(
     isRevalidation,
     false
   )
+}
+
+export function readRouteCacheEntry(
+  now: number,
+  key: RouteCacheKey
+): RouteCacheEntry | null {
+  const existingEntry = readRouteCacheEntryFromCache(now, key)
   if (existingEntry !== null) {
     return existingEntry
   }
@@ -723,7 +730,10 @@ export function readOrCreateRouteCacheEntry(
 ): RouteCacheEntry {
   attachInvalidationListener(task)
 
-  const existingEntry = readRouteCacheEntry(now, key)
+  // Prefetch tasks need a concrete entry for this exact URL. A route tree
+  // synthesized by optimistic routing is sufficient for navigation, but it
+  // must not suppress the URL's own route-tree/segment prefetch.
+  const existingEntry = readRouteCacheEntryFromCache(now, key)
   if (existingEntry !== null) {
     return existingEntry
   }
